@@ -1,26 +1,43 @@
 import os
+from os.path import join, exists
+from os import mkdir
+from data_pre_proc import dataPreProcessor
 from PIL import Image
+import numpy as np
 
 def main():
-    print('hi')
+    # target_path = 'J:\\Celebs_dataset\\small_celeba_cracked\\label\\000001.png'
+    # img = Image.open(target_path)
+    #
+    # kernelarr = np.array([[1,1,1,1,1],
+    #                    [1,0,0,0,1],
+    #                    [1,0,0,0,1],
+    #                    [1,0,0,0,1],
+    #                    [1,1,1,1,1]]) * 255
+    #
+    # kernel = Image.fromarray(kernelarr).convert("L")
+    #
+    # img.paste(kernel, (70, 70), mask=kernel)
+    #
+    # img.show()
 
-    mask_path = 'mask1.png'
+    DATA_SET_FOLDER = 'J:\Celebs_dataset\small_celeba'
+    OUT_DATA_FOLDER = 'J:\Celebs_dataset\small_celeba_cracked'
+    if not exists(OUT_DATA_FOLDER):
+        mkdir(OUT_DATA_FOLDER)
 
-    mask = Image.open(mask_path, 'r')
+    out_data_path = join(OUT_DATA_FOLDER, 'data')
+    out_label_path = join(OUT_DATA_FOLDER, 'label')
+    if not exists(out_data_path):
+        mkdir(out_data_path)
+    if not exists(out_label_path):
+        mkdir(out_label_path)
 
-    target_path = 'target.JPG'
+    preproc = dataPreProcessor(DATA_SET_FOLDER,
+                               out_path_data=out_data_path,
+                               out_path_true=out_label_path)
 
-    target = Image.open(target_path, 'r')
-
-    # res_img = Image.new('RGBA', (600, 320), (0, 0, 0, 0))
-
-    target.paste(mask, (1000,1000), mask=mask)
-
-    target.show()
-
-    # text_img.paste(bg, (0, 0))
-    # text_img.paste(ironman, (0, 0), mask=ironman)
-    # text_img.save("ball.png", format="png")
+    preproc.pre_process()
 
 main()
 
