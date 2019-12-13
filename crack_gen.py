@@ -8,48 +8,67 @@ class Point():
         self.updown = updown
         self.leftright = leftright
 
-kernels = (
-    np.array([[0.5, 0.7, 0.5],
-     [0.7, 1  , 0.7],
-     [0.7, 0.7, 0.5]]),
+class Kernels():
+    def __init__(self, min_size=1, max_size=5, oreol=1):
+        self.min_size = min_size
+        self.max_size = max_size
+        self.oreol = oreol
+        self.last_size = min_size
+        self.getting_bigger = True
+        self.chance_to_grow = 3 # bigger val -> smaller chance
 
-    np.array([[0.1, 0.3, 0.7, 0.3, 0.1],
-     [0.3, 0.7, 0.8, 0.7, 0.3],
-     [0.7, 0.8, 1  , 0.8, 0.7],
-     [0.3, 0.7, 0.8, 0.7, 0.3],
-     [0.1, 0.3, 0.7, 0.3, 0.1]]),
+    def get_kernel(self):
+        if self.getting_bigger == True:
+            # maybe get bigger:
+            if randint(0, self.chance_to_grow) == 1:
+                self.last_size += 1
+                if self.last_size == self.max_size:
+                    # No more getting bigger
+                    self.getting_bigger = False
+        else:
+            # maybe get smaller:
+            if randint(0, self.chance_to_grow) == 1:
+                self.last_size -= 1
+                if self.last_size == self.min_size:
+                    # No more getting smaller
+                    self.getting_bigger = True
 
-    np.array([[0  , 0  , 0.1, 0.3, 0.1, 0  , 0  ],
-     [0  , 0.1, 0.3, 0.7, 0.3, 0.1, 0  ],
-     [0.1, 0.3, 0.7, 0.9, 0.7, 0.3, 0.1],
-     [0.3, 0.7, 0.9, 1  , 0.9, 0.7, 0.3],
-     [0.1, 0.3, 0.7, 0.9, 0.7, 0.3, 0.1],
-     [0  , 0.1, 0.3, 0.7, 0.3, 0.1, 0  ],
-     [0  , 0  , 0.1, 0.3, 0.1, 0  , 0  ]])
-)
+        kernel = np.ones((self.last_size, self.last_size))
+
+        def pad_with(vector, pad_width, iaxis, kwargs):
+            pad_value = kwargs.get('padder', 0)
+            vector[:pad_width[0]] = pad_value
+            vector[-pad_width[1]:] = pad_value
+
+        kernel = np.pad(kernel, self.oreol, pad_with)
+        oreol = np.random.randint(2, size=kernel.shape)
+        kernel = np.logical_or(kernel, oreol).astype(int)
+        return kernel
+
 
 class crackGenerator():
     def __init__(self, target_image=None):
         # TODO change all height to width and vise versa.
-        self.width = 1000
-        self.heigh = 1500
-        self.image = np.zeros((self.heigh, self.width))
+        self.width = target_image.width
+        self.heigh = target_image.height
+        self.image = target_image #np.zeros((self.heigh, self.width))
         self.max_iter = 10000
         self.crack_path = []
+        self.kernel_getter = Kernels()
 
 
-    def show_mask(self):
-        image = Image.fromarray(self.image).convert("RGBA")
+    def get_cracked_image(self):
+        assert len(self.crack_path) != 0
 
         for point in self.crack_path:
             if self._legal_point(point):
-                # self.mask[point[0]][point[1]] = randint(150, 250)
-                kernelarr = kernels[randint(0, len(kernels)-1)] * randint(170, 250)#np.ones((randint(2, 5), randint(2, 5))) * randint(170, 250)
-                kernel = Image.fromarray(kernelarr).convert("RGBA")
-                # x, y transposed for some reason
-                image.paste(kernel, (point.leftright, point.updown), mask=kernel)
 
-        image.show()
+                kernelarr = self.kernel_getter.get_kernel()*randint(240, 255)#np.ones((randint(1, 3), randint(1, 3))) * randint(240, 250) #kernels[randint(0, len(kernels)-1)] * randint(170, 250)#
+                kernel = Image.fromarray(kernelarr).convert("L")
+                # x, y transposed for some reason
+                self.image.paste(kernel, (point.leftright, point.updown), mask=kernel)
+
+        return self.image
 
     def maybe_init_direction(self):
         rand = randint(0, 500)
@@ -60,6 +79,12 @@ class crackGenerator():
     def init_direction(self):
         (self.updown_low, self.updown_high) = choice(((-2, -1), (-1, 0), (0, 1), (1, 2), (-1, 1)))
         (self.leftright_low, self.leftright_high) = choice(((-2, -1), (-1, 0), (0, 1), (1, 2), (-1, 1)))
+
+        if (self.updown_low, self.updown_high) == (-1,1) and (self.leftright_low, self.leftright_high) == (-1, 1):
+            # To avoid big white spots
+            self.max_iter = 1000
+        else:
+            self.max_iter = 10000
 
 
     def generate_crack(self):
@@ -106,14 +131,3 @@ class crackGenerator():
         return Point(curr_point.updown + updown_dir, curr_point.leftright + leftright_dir)
 
 
-
-def test():
-    gen = crackGenerator()
-    for i in range(10):
-        gen.generate_crack()
-
-    gen.show_mask()
-
-
-
-test()
